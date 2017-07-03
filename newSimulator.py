@@ -12,7 +12,13 @@ import matplotlib.pyplot as plt
 
 # Return hex digest string of given data
 
-
+def pandding(inputVal, expectLen):
+    inputVal = format(inputVal, 'x')
+    if(expectLen - len(inputVal) > 0):
+        return ('0'*(expectLen - len(inputVal))) + inputVal
+    else:
+        return inputVal
+    
 def keccak256(inputVal):
     return sha3.keccak_256(inputVal).hexdigest()
 
@@ -392,6 +398,29 @@ blockchainSize = len(ethereumBlockchain)
 continueHexData = []
 sharedData = []
 
+def WitnessAssign(baseBlock, minerIndex = 1, times = 100, totalWintess= 10000):
+    x = ethereumBlockchain[baseBlock]['id']
+    v = keccak256Hex(x)
+    f = createFingerPrint(v)
+    dat = [0]*totalWintess
+    count = 0
+    tmpClock = clock()
+    (x, tries) = randomizeFPoW(f, 64, 300, tmpClock)
+    v = keccak256Hex(x)
+    f = createFingerPrint(v)
+    for c in range(times):
+        t = keccak256Hex(v + pandding(minerIndex, 2) + pandding(c, 2))
+        value = int('0x' + t[-8:64], 0)
+        dat[value%totalWintess] += 1
+    tmpClock.reset()
+    datX = []
+    datY = []
+    for c in range(totalWintess):
+        if(dat[c] > 0):
+            datX.append(c)
+            datY.append(dat[c])
+    return [datX, datY]
+    
 
 def MainProc():
     if(not isExistingFile('./data/bruteforce-estimate-and-experiment.dat')):
@@ -429,7 +458,7 @@ def MainProc():
     else:
         exportData = jsonRead('./data/randomize-estimate-and-experiment.dat')
 
-    # Bruterforce experiment
+    # Randomize experiment
     plt.title('[Randomize] Probability of solution\'s images dependence to e')
     label = ['Estimate', 'Experiment']
     lines = []
@@ -442,11 +471,18 @@ def MainProc():
     plt.savefig("./plot/randomize-estimate-and-experiment.svg")
     plt.cla()
 
+    (datX, datY) = WitnessAssign(0, 0, 100)
+    plt.scatter(datX, datY, marker='o', c='r', s=2, label='100')
+    plt.savefig("./plot/100-witness-assignment-experiment.svg")
+    plt.cla()
+    (datX, datY) = WitnessAssign(1, 0, 200)
+    plt.scatter(datX, datY, marker='+', c='g', s=2, label='200')
+    plt.savefig("./plot/200-witness-assignment-experiment.svg")
+    plt.cla()
+    (datX, datY) = WitnessAssign(2, 0, 500)
+    plt.scatter(datX, datY, marker='*', c='b', s=2, label='500')
+    plt.savefig("./plot/500-witness-assignment-experiment.svg")
+    plt.cla()
+
 
 MainProc()
-
-# FPoWExperiment(blockNumber=0, e=64, eraTimeout=10,
-#               randomize=False, samples=1000, threads=12)
-# for i in sharedData:
-#    print i[0]
-# 38->90
