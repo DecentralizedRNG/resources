@@ -3,6 +3,7 @@ import Queue
 import threading
 import time
 import os
+import random
 import array
 import math
 import json
@@ -398,7 +399,7 @@ blockchainSize = len(ethereumBlockchain)
 continueHexData = []
 sharedData = []
 
-def WitnessAssign(baseBlock, minerIndex = 1, times = 100, totalWintess= 10000):
+def witnessAssign(baseBlock, minerIndex = 1, times = 100, totalWintess= 10000):
     x = ethereumBlockchain[baseBlock]['id']
     v = keccak256Hex(x)
     f = createFingerPrint(v)
@@ -413,6 +414,29 @@ def WitnessAssign(baseBlock, minerIndex = 1, times = 100, totalWintess= 10000):
         value = int('0x' + t[-8:64], 0)
         dat[value%totalWintess] += 1
     tmpClock.reset()
+    datX = []
+    datY = []
+    for c in range(totalWintess):
+        if(dat[c] > 0):
+            datX.append(c)
+            datY.append(dat[c])
+    return [datX, datY]
+
+def witnessAssignmentOverlap(baseBlock, totalSloutions = 10000, times = 100, totalWintess= 10000):
+    x = ethereumBlockchain[baseBlock]['id']
+    v = keccak256Hex(x)
+    f = createFingerPrint(v)
+    dat = [0]*totalWintess
+    for m in range(totalSloutions):
+        tmpClock = clock()
+        (x, tries) = randomizeFPoW(f, 64, 300, tmpClock)
+        v = keccak256Hex(x)
+        f = createFingerPrint(v)
+        for c in range(times):
+            t = keccak256Hex(v + pandding(m, 2) + pandding(c, 2))
+            value = int('0x' + t[-8:64], 0)
+            dat[value%totalWintess] += 1
+        tmpClock.reset()
     datX = []
     datY = []
     for c in range(totalWintess):
@@ -470,19 +494,26 @@ def MainProc():
     plt.legend(bbox_to_anchor=(1, 1), handles=lines)
     plt.savefig("./plot/randomize-estimate-and-experiment.svg")
     plt.cla()
+    
 
-    (datX, datY) = WitnessAssign(0, 0, 100)
-    plt.scatter(datX, datY, marker='o', c='r', s=2, label='100')
+    (datX, datY) = witnessAssign(random.randint(0, 1000), random.randint(0, 1000), 100)
+    plt.plot(datX, datY, 'ro')
     plt.savefig("./plot/100-witness-assignment-experiment.svg")
     plt.cla()
-    (datX, datY) = WitnessAssign(1, 0, 200)
-    plt.scatter(datX, datY, marker='+', c='g', s=2, label='200')
+
+    (datX, datY) = witnessAssign(random.randint(0, 1000), random.randint(0, 1000), 200)
+    plt.plot(datX, datY, 'go')
     plt.savefig("./plot/200-witness-assignment-experiment.svg")
     plt.cla()
-    (datX, datY) = WitnessAssign(2, 0, 500)
-    plt.scatter(datX, datY, marker='*', c='b', s=2, label='500')
+
+    (datX, datY) = witnessAssign(random.randint(0, 1000), random.randint(0, 1000), 500)
+    plt.plot(datX, datY, 'bo')
     plt.savefig("./plot/500-witness-assignment-experiment.svg")
     plt.cla()
 
+    (datX, datY) = witnessAssignmentOverlap(random.randint(0, 1000))
+    plt.plot(datX, datY)
+    plt.savefig("./plot/witness-assignment-overlap-experiment.svg")
+    plt.cla()
 
 MainProc()
