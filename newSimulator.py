@@ -401,6 +401,42 @@ blockchainSize = len(ethereumBlockchain)
 continueHexData = []
 sharedData = []
 
+# Colluding parties
+
+
+def witnessColluding(baseBlock, minerIndex=1, totalWintess=10000, percent=0.9, neighbors=100):
+    x = ethereumBlockchain[baseBlock]['id']
+    v = keccak256Hex(x)
+    f = createFingerPrint(v)
+    witness = [0] * totalWintess
+    colluding = [0] * totalWintess
+    total = int(percent * totalWintess)
+    tmpClock = clock()
+    c = 0
+    colludingCount = 0
+
+    (x, tries) = randomizeFPoW(f, 64, 300, tmpClock)
+    v = keccak256Hex(x)
+    f = createFingerPrint(v)
+    for c in range(neighbors):
+        t = keccak256Hex(v + pandding(minerIndex, 2) + pandding(c, 2))
+        value = int('0x' + t[-8:64], 0)
+        witness[value % totalWintess] = 1
+    tmpClock.reset()
+    c = 0
+
+    while (c < total):
+        i = random.randint(0, totalWintess - 1)
+        if colluding[i] == 0:
+            colluding[i] = 1
+            c += 1
+
+    for c in range(totalWintess):
+        if (witness[c] == colluding[c]) and (colluding[c] == 1):
+            colludingCount += 1
+
+    return float(colludingCount) / float(neighbors)
+
 # Witness assign
 
 
@@ -530,13 +566,25 @@ def solutionsExperiment():
         lines.append(None)
         lines[i - 1], = plt.plot(exportData[0],
                                  exportData[i], label=label[i - 1])
-    
+
     plt.legend(bbox_to_anchor=(1, 1), handles=lines)
     plt.savefig("./plot/randomize-estimate-and-experiment.svg")
     plt.cla()
 
 # Solutions experiment
-solutionsExperiment()
+# solutionsExperiment()
 
 # Witness experiment
-witnessExperiment()
+# witnessExperiment()
+
+
+plotX = []
+plotY = []
+
+for i in range(100):
+    plotX.append(i)
+    plotY.append(witnessColluding(1, minerIndex=1, totalWintess=10000,
+                                  percent=0.8, neighbors=100))
+
+plt.plot(plotX, plotY)
+plt.show()
