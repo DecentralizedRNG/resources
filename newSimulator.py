@@ -13,13 +13,15 @@ import matplotlib.pyplot as plt
 
 # Return hex digest string of given data
 
+
 def pandding(inputVal, expectLen):
     inputVal = format(inputVal, 'x')
     if(expectLen - len(inputVal) > 0):
-        return ('0'*(expectLen - len(inputVal))) + inputVal
+        return ('0' * (expectLen - len(inputVal))) + inputVal
     else:
         return inputVal
-    
+
+
 def keccak256(inputVal):
     return sha3.keccak_256(inputVal).hexdigest()
 
@@ -376,7 +378,7 @@ def experimentProbability(blockNumber=0, duration=26, eraTimeout=10, randomize=F
             if(not exp[i][1] == 0):
                 sumVal += float(exp[i][1])
         if(not sumVal == 0):
-            retVal[e] = float(lenExp)/float(sumVal)
+            retVal[e] = float(lenExp) / float(sumVal)
         detailData[e] = exp
         resetGlobalVariable()
     return [retVal, detailData]
@@ -399,11 +401,14 @@ blockchainSize = len(ethereumBlockchain)
 continueHexData = []
 sharedData = []
 
-def witnessAssign(baseBlock, minerIndex = 1, times = 100, totalWintess= 10000):
+# Witness assign
+
+
+def witnessAssign(baseBlock, minerIndex=1, times=100, totalWintess=10000):
     x = ethereumBlockchain[baseBlock]['id']
     v = keccak256Hex(x)
     f = createFingerPrint(v)
-    dat = [0]*totalWintess
+    dat = [0] * totalWintess
     count = 0
     tmpClock = clock()
     (x, tries) = randomizeFPoW(f, 64, 300, tmpClock)
@@ -412,7 +417,7 @@ def witnessAssign(baseBlock, minerIndex = 1, times = 100, totalWintess= 10000):
     for c in range(times):
         t = keccak256Hex(v + pandding(minerIndex, 2) + pandding(c, 2))
         value = int('0x' + t[-8:64], 0)
-        dat[value%totalWintess] += 1
+        dat[value % totalWintess] += 1
     tmpClock.reset()
     datX = []
     datY = []
@@ -422,11 +427,14 @@ def witnessAssign(baseBlock, minerIndex = 1, times = 100, totalWintess= 10000):
             datY.append(dat[c])
     return [datX, datY]
 
-def witnessAssignmentOverlap(baseBlock, totalSloutions = 10000, times = 100, totalWintess= 10000):
+# Witness assignment overlap
+
+
+def witnessAssignmentOverlap(baseBlock, totalSloutions=10000, times=100, totalWintess=10000):
     x = ethereumBlockchain[baseBlock]['id']
     v = keccak256Hex(x)
     f = createFingerPrint(v)
-    dat = [0]*totalWintess
+    dat = [0] * totalWintess
     for m in range(totalSloutions):
         tmpClock = clock()
         (x, tries) = randomizeFPoW(f, 64, 300, tmpClock)
@@ -435,7 +443,7 @@ def witnessAssignmentOverlap(baseBlock, totalSloutions = 10000, times = 100, tot
         for c in range(times):
             t = keccak256Hex(v + pandding(m, 2) + pandding(c, 2))
             value = int('0x' + t[-8:64], 0)
-            dat[value%totalWintess] += 1
+            dat[value % totalWintess] += 1
         tmpClock.reset()
     datX = []
     datY = []
@@ -444,9 +452,40 @@ def witnessAssignmentOverlap(baseBlock, totalSloutions = 10000, times = 100, tot
             datX.append(c)
             datY.append(dat[c])
     return [datX, datY]
-    
 
-def MainProc():
+# Expriment
+
+
+def witnessExperiment():
+    print 'Witness experiment'
+    (datX, datY) = witnessAssign(random.randint(
+        0, 1000), random.randint(0, 1000), 100)
+    plt.plot(datX, datY, 'ro')
+    plt.savefig("./plot/100-witness-assignment-experiment.svg")
+    plt.cla()
+
+    (datX, datY) = witnessAssign(random.randint(
+        0, 1000), random.randint(0, 1000), 200)
+    plt.plot(datX, datY, 'go')
+    plt.savefig("./plot/200-witness-assignment-experiment.svg")
+    plt.cla()
+
+    (datX, datY) = witnessAssign(random.randint(
+        0, 1000), random.randint(0, 1000), 500)
+    plt.plot(datX, datY, 'bo')
+    plt.savefig("./plot/500-witness-assignment-experiment.svg")
+    plt.cla()
+
+    (datX, datY) = witnessAssignmentOverlap(random.randint(0, 1000))
+    plt.plot(datX, datY)
+    plt.savefig("./plot/witness-assignment-overlap-experiment.svg")
+    plt.cla()
+
+# Solutions experiment
+
+
+def solutionsExperiment():
+    print 'Bruteforce experiment'
     if(not isExistingFile('./data/bruteforce-estimate-and-experiment.dat')):
         exportData = estimateProbability()
         lenEstimate = len(exportData[0])
@@ -471,6 +510,7 @@ def MainProc():
     plt.savefig("./plot/bruteforce-estimate-and-experiment.svg")
     plt.cla()
 
+    print 'Randomize experiment'
     if(not isExistingFile('./data/randomize-estimate-and-experiment.dat')):
         exportData = estimateProbability()
         lenEstimate = len(exportData[0])
@@ -490,30 +530,13 @@ def MainProc():
         lines.append(None)
         lines[i - 1], = plt.plot(exportData[0],
                                  exportData[i], label=label[i - 1])
-
+    
     plt.legend(bbox_to_anchor=(1, 1), handles=lines)
     plt.savefig("./plot/randomize-estimate-and-experiment.svg")
     plt.cla()
-    
 
-    (datX, datY) = witnessAssign(random.randint(0, 1000), random.randint(0, 1000), 100)
-    plt.plot(datX, datY, 'ro')
-    plt.savefig("./plot/100-witness-assignment-experiment.svg")
-    plt.cla()
+# Solutions experiment
+solutionsExperiment()
 
-    (datX, datY) = witnessAssign(random.randint(0, 1000), random.randint(0, 1000), 200)
-    plt.plot(datX, datY, 'go')
-    plt.savefig("./plot/200-witness-assignment-experiment.svg")
-    plt.cla()
-
-    (datX, datY) = witnessAssign(random.randint(0, 1000), random.randint(0, 1000), 500)
-    plt.plot(datX, datY, 'bo')
-    plt.savefig("./plot/500-witness-assignment-experiment.svg")
-    plt.cla()
-
-    (datX, datY) = witnessAssignmentOverlap(random.randint(0, 1000))
-    plt.plot(datX, datY)
-    plt.savefig("./plot/witness-assignment-overlap-experiment.svg")
-    plt.cla()
-
-MainProc()
+# Witness experiment
+witnessExperiment()
