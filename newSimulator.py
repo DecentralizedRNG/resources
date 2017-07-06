@@ -14,12 +14,11 @@ import matplotlib.pyplot as plt
 # Return hex digest string of given data
 
 
-def pandding(inputVal, expectLen):
+def pandding(inputVal):
     inputVal = format(inputVal, 'x')
-    if(expectLen - len(inputVal) > 0):
-        return ('0' * (expectLen - len(inputVal))) + inputVal
-    else:
-        return inputVal
+    if(not len(inputVal) % 2 == 0):
+        inputVal = '0' + inputVal
+    return inputVal
 
 
 def keccak256(inputVal):
@@ -33,6 +32,11 @@ def keccak256Hex(hexString):
         hexData = ('0' + hexString).decode('hex')
     return sha3.keccak_256(hexData).hexdigest()
 
+def loopKeccak256Hex(hexString, times):
+    retVal = hexString
+    for c in range(times):
+        retVal = keccak256Hex(retVal)
+    return retVal
 
 # Convert hex data to bytes array
 def hexToBinArray(hexString):
@@ -401,10 +405,18 @@ blockchainSize = len(ethereumBlockchain)
 continueHexData = []
 sharedData = []
 
+def exportPdf(datX, datY, filename):
+    length = len(datX)
+    fHandle = open(filename, 'w')
+    fHandle.write('x y\n')
+    for c in range(length):
+        fHandle.write(`datX[c]` + ' ' + `datY[c]` + '\n')
+    fHandle.close()
+
 # Colluding parties
 
 
-def witnessColluding(baseBlock, minerIndex=1, totalWintess=10000, percent=0.9, neighbors=100):
+def witnessColluding(baseBlock, totalWintess=10000, percent=0.9, neighbors=100, loopHash=False):
     x = ethereumBlockchain[baseBlock]['id']
     v = keccak256Hex(x)
     f = createFingerPrint(v)
@@ -419,7 +431,10 @@ def witnessColluding(baseBlock, minerIndex=1, totalWintess=10000, percent=0.9, n
     v = keccak256Hex(x)
     f = createFingerPrint(v)
     for c in range(neighbors):
-        t = keccak256Hex(v + pandding(minerIndex, 2) + pandding(c, 2))
+        if(loopHash):
+            t = loopKeccak256Hex(v, c)
+        else:
+            t = keccak256Hex(v + pandding(c))
         value = int('0x' + t[-8:64], 0)
         witness[value % totalWintess] = 1
     tmpClock.reset()
@@ -440,7 +455,7 @@ def witnessColluding(baseBlock, minerIndex=1, totalWintess=10000, percent=0.9, n
 # Witness assign
 
 
-def witnessAssign(baseBlock, minerIndex=1, times=100, totalWintess=10000):
+def witnessAssign(baseBlock, times=100, totalWintess=10000, loopHash=False):
     x = ethereumBlockchain[baseBlock]['id']
     v = keccak256Hex(x)
     f = createFingerPrint(v)
@@ -451,7 +466,10 @@ def witnessAssign(baseBlock, minerIndex=1, times=100, totalWintess=10000):
     v = keccak256Hex(x)
     f = createFingerPrint(v)
     for c in range(times):
-        t = keccak256Hex(v + pandding(minerIndex, 2) + pandding(c, 2))
+        if(loopHash):
+            t = loopKeccak256Hex(v, c)
+        else:
+            t = keccak256Hex(v + pandding(c))
         value = int('0x' + t[-8:64], 0)
         dat[value % totalWintess] += 1
     tmpClock.reset()
@@ -466,55 +484,119 @@ def witnessAssign(baseBlock, minerIndex=1, times=100, totalWintess=10000):
 # Witness assignment overlap
 
 
-def witnessAssignmentOverlap(baseBlock, totalSloutions=10000, times=100, totalWintess=10000):
+def witnessAssignmentOverlap(baseBlock, numberOfSample=2100, totalWintess=10000, loopHash=False):
     x = ethereumBlockchain[baseBlock]['id']
     v = keccak256Hex(x)
     f = createFingerPrint(v)
-    dat = [0] * totalWintess
-    for m in range(totalSloutions):
-        tmpClock = clock()
+    tmpClock = clock()
+    retVal = []
+    for m in  range(100, numberOfSample, 100):
+        dat = [0] * totalWintess
         (x, tries) = randomizeFPoW(f, 64, 300, tmpClock)
+        tmpClock.reset()
         v = keccak256Hex(x)
         f = createFingerPrint(v)
-        for c in range(times):
-            t = keccak256Hex(v + pandding(m, 2) + pandding(c, 2))
+        for c in range(m):
+            if(loopHash):
+                t = loopKeccak256Hex(v, c)
+            else:
+                t = keccak256Hex(v + pandding(c))
             value = int('0x' + t[-8:64], 0)
             dat[value % totalWintess] += 1
-        tmpClock.reset()
-    datX = []
-    datY = []
-    for c in range(totalWintess):
-        if(dat[c] > 0):
-            datX.append(c)
-            datY.append(dat[c])
-    return [datX, datY]
+        overlap = 0
+        for c in range(m):
+            if(dat[c] > 1):
+                overlap +=  dat[c] - 1
+        retVal.append(overlap)
+    return [range(100, numberOfSample, 100), retVal]
+    
 
 # Expriment
 
 
 def witnessExperiment():
     print 'Witness experiment'
-    (datX, datY) = witnessAssign(random.randint(
-        0, 1000), random.randint(0, 1000), 100)
-    plt.plot(datX, datY, 'ro')
-    plt.savefig("./plot/100-witness-assignment-experiment.svg")
-    plt.cla()
 
-    (datX, datY) = witnessAssign(random.randint(
-        0, 1000), random.randint(0, 1000), 200)
+    print 'Experiment: 100/10.000 witness (oncetime-hash)'
+    (datX, datY) = witnessAssign(random.randint(0, 1000), 200, loopHash=False)
     plt.plot(datX, datY, 'go')
-    plt.savefig("./plot/200-witness-assignment-experiment.svg")
+    plt.cla()
+    plt.plot(datX, datY, 'go')
+    plt.savefig("./plot/200-witness-assignment-experiment-oncetime-hash.svg")
+    exportPdf(datX, datY, './experiment/witness/plot-data-200-points-oncetime-hash.dat')
     plt.cla()
 
-    (datX, datY) = witnessAssign(random.randint(
-        0, 1000), random.randint(0, 1000), 500)
-    plt.plot(datX, datY, 'bo')
-    plt.savefig("./plot/500-witness-assignment-experiment.svg")
-    plt.cla()
-
-    (datX, datY) = witnessAssignmentOverlap(random.randint(0, 1000))
+    print 'Experiment: (100...2000)/10.000 witness (oncetime-hash)'
+    (datX, datY) = witnessAssignmentOverlap(random.randint(0, 1000), loopHash=False)
     plt.plot(datX, datY)
-    plt.savefig("./plot/witness-assignment-overlap-experiment.svg")
+    plt.savefig("./plot/witness-assignment-overlap-experiment-oncetime-hash.svg")
+    exportPdf(datX, datY, './experiment/witness/witness-assignment-overlap-experiment-oncetime-hash.dat')
+    plt.cla()
+
+    print 'Experiment: 60..80% colluding parties (oncetime-hash)'
+    plotX = []
+    plotY1 = []
+    plotY2 = []
+    plotY3 = []
+
+    for i in range(100):
+        plotX.append(i)
+        plotY1.append(witnessColluding(1, totalWintess=10000,
+                                    percent=0.6, neighbors=100, loopHash=False))
+        plotY2.append(witnessColluding(1, totalWintess=10000,
+                                    percent=0.7, neighbors=100, loopHash=False))
+        plotY3.append(witnessColluding(1, totalWintess=10000,
+                                    percent=0.8, neighbors=100, loopHash=False))
+    plt.plot(plotX, plotY1)
+    plt.plot(plotX, plotY2)
+    plt.plot(plotX, plotY3)
+
+    fHandle = open('./experiment/witness/colluding-parties-rate-oncetime-hash.dat', 'w')
+    fHandle.write('x y1 y2 y3\n')
+    for c in range(100):
+        fHandle.write(`plotX[c]` + ' ' + `plotY1[c]` + ' ' + `plotY2[c]` + ' ' + `plotY3[c]` + '\n')
+    fHandle.close()
+    plt.savefig("./plot/colluding-parties-rate-oncetime-hash.svg")
+    plt.cla()
+
+    print 'Experiment: 100/10.000 witness (loop-hash)'
+    (datX, datY) = witnessAssign(random.randint(0, 1000), 200, loopHash=True)
+    plt.plot(datX, datY, 'go')
+    plt.savefig("./plot/200-witness-assignment-experiment-loop-hash.svg")
+    exportPdf(datX, datY, './experiment/witness/plot-data-200-points-loop-hash.dat')
+    plt.cla()
+    
+    print 'Experiment: (100...2000)/10.000 witness (loop-hash)'
+    (datX, datY) = witnessAssignmentOverlap(random.randint(0, 1000), loopHash=True)
+    plt.plot(datX, datY)
+    plt.savefig("./plot/witness-assignment-overlap-experiment-loop-hash.svg")
+    exportPdf(datX, datY, './experiment/witness/witness-assignment-overlap-experiment-loop-hash.dat')
+    plt.cla()
+   
+    plotX = []
+    plotY1 = []
+    plotY2 = []
+    plotY3 = []
+
+    print 'Experiment: 60..80% colluding parties (loop-hash)'
+    for i in range(100):
+        plotX.append(i)
+        plotY1.append(witnessColluding(1, totalWintess=10000,
+                                    percent=0.6, neighbors=100, loopHash=True))
+        plotY2.append(witnessColluding(1, totalWintess=10000,
+                                    percent=0.7, neighbors=100, loopHash=True))
+        plotY3.append(witnessColluding(1, totalWintess=10000,
+                                    percent=0.8, neighbors=100, loopHash=True))
+    plt.plot(plotX, plotY1)
+    plt.plot(plotX, plotY2)
+    plt.plot(plotX, plotY3)
+
+    fHandle = open('./experiment/witness/colluding-parties-rate-loop-hash.dat', 'w')
+    fHandle.write('x y1 y2 y3\n')
+    for c in range(100):
+        fHandle.write(`plotX[c]` + ' ' + `plotY1[c]` + ' ' + `plotY2[c]` + ' ' + `plotY3[c]` + '\n')
+    fHandle.close()
+    plt.savefig("./plot/colluding-parties-rate-loop-hash.svg")
     plt.cla()
 
 # Solutions experiment
@@ -572,19 +654,7 @@ def solutionsExperiment():
     plt.cla()
 
 # Solutions experiment
-# solutionsExperiment()
+solutionsExperiment()
 
 # Witness experiment
-# witnessExperiment()
-
-
-plotX = []
-plotY = []
-
-for i in range(100):
-    plotX.append(i)
-    plotY.append(witnessColluding(1, minerIndex=1, totalWintess=10000,
-                                  percent=0.8, neighbors=100))
-
-plt.plot(plotX, plotY)
-plt.show()
+witnessExperiment()
