@@ -529,7 +529,7 @@ def witnessAssignmentOverlap(baseBlock, samples=range(100, 1100, 100), totalWint
             value = int('0x' + t[-8:64], 0)
             dat[value % totalWintess] += 1
         overlap = 0
-        for c in range(m):
+        for c in range(totalWintess):
             if(dat[c] > 1):
                 overlap += dat[c] - 1
         retVal.append(overlap)
@@ -541,6 +541,14 @@ def witnessAssignmentOverlap(baseBlock, samples=range(100, 1100, 100), totalWint
 
 def witnessExperiment():
     print 'Witness experiment'
+    
+    if(not isExistingFile('./experiment/witness/100-witness-assignment-overlap-experiment-oncetime-hash.dat')) and (not isExistingFile('./experiment/witness/100-witness-assignment-overlap-experiment-loop-hash.dat')):
+        print 'Experiment: 200 witness overlap'
+        (datX, datY) = witnessAssign(random.randint(0, 1000), loopHash=False)
+        exportPdf([datX, datY], './experiment/witness/200-witness-assignment-overlap-experiment-oncetime-hash.dat')
+        (datX, datY) = witnessAssign(random.randint(0, 1000), loopHash=True)
+        exportPdf([datX, datY], './experiment/witness/200-witness-assignment-overlap-experiment-loop-hash.dat')
+
     if(not isExistingFile('./experiment/witness/100-witness-assignment-overlap-experiment-1000-times-oncetime-hash.dat')) and (not isExistingFile('./experiment/witness/100-witness-assignment-overlap-experiment-1000-times-loop-hash.dat')):
         print 'Experiment: assign 100 witness 1000 times'
         (datX, datY1) = witnessAssignmentOverlap(
