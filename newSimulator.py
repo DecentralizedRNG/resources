@@ -32,6 +32,7 @@ def keccak256Hex(hexString):
         hexData = ('0' + hexString).decode('hex')
     return sha3.keccak_256(hexData).hexdigest()
 
+
 def loopKeccak256Hex(hexString, times):
     retVal = hexString
     for c in range(times):
@@ -39,6 +40,8 @@ def loopKeccak256Hex(hexString, times):
     return retVal
 
 # Convert hex data to bytes array
+
+
 def hexToBinArray(hexString):
     if len(hexString) % 2 == 0:
         hexData = hexString.decode('hex')
@@ -405,13 +408,31 @@ blockchainSize = len(ethereumBlockchain)
 continueHexData = []
 sharedData = []
 
-def exportPdf(datX, datY, filename):
-    length = len(datX)
-    fHandle = open(filename, 'w')
-    fHandle.write('x y\n')
-    for c in range(length):
-        fHandle.write(`datX[c]` + ' ' + `datY[c]` + '\n')
-    fHandle.close()
+
+def exportPdf(data, filename):
+    try:
+        if type(data) is list and type(data[0]) is list:
+            datLen = len(data)
+            elmLen = len(data[0])
+            fHandle = open(filename, 'w')
+            fHandle.write('x')
+            for c in range(1, datLen):
+                fHandle.write(' y' + `c`)
+            fHandle.write('\n')
+            for i in range(elmLen):
+                for j in range(datLen):
+                    if(j > 0):
+                        fHandle.write(' ')
+                    fHandle.write(`data[j][i]`)
+                if (i + 1) < elmLen:
+                    fHandle.write('\n')
+            fHandle.close()
+            return True
+        else:
+            return False
+    except:
+        return False
+    return False
 
 # Colluding parties
 
@@ -484,13 +505,17 @@ def witnessAssign(baseBlock, times=100, totalWintess=10000, loopHash=False):
 # Witness assignment overlap
 
 
-def witnessAssignmentOverlap(baseBlock, numberOfSample=2100, totalWintess=10000, loopHash=False):
+def witnessAssignmentOverlap(baseBlock, samples=range(100, 1100, 100), totalWintess=10000, loopHash=False):
     x = ethereumBlockchain[baseBlock]['id']
     v = keccak256Hex(x)
     f = createFingerPrint(v)
     tmpClock = clock()
     retVal = []
-    for m in  range(100, numberOfSample, 100):
+    repeat = []
+    count = 0
+    for m in samples:
+        count += 1
+        repeat.append(count)
         dat = [0] * totalWintess
         (x, tries) = randomizeFPoW(f, 64, 300, tmpClock)
         tmpClock.reset()
@@ -506,98 +531,57 @@ def witnessAssignmentOverlap(baseBlock, numberOfSample=2100, totalWintess=10000,
         overlap = 0
         for c in range(m):
             if(dat[c] > 1):
-                overlap +=  dat[c] - 1
+                overlap += dat[c] - 1
         retVal.append(overlap)
-    return [range(100, numberOfSample, 100), retVal]
-    
+    return [repeat, retVal]
+
 
 # Expriment
 
 
 def witnessExperiment():
     print 'Witness experiment'
+    if(not isExistingFile('./experiment/witness/100-witness-assignment-overlap-experiment-1000-times-oncetime-hash.dat')) and (not isExistingFile('./experiment/witness/100-witness-assignment-overlap-experiment-1000-times-loop-hash.dat')):
+        print 'Experiment: assign 100 witness 1000 times'
+        (datX, datY1) = witnessAssignmentOverlap(
+            random.randint(0, 1000), samples=[100] * 1000, loopHash=False)
+        exportPdf(
+            [datX, datY1], './experiment/witness/100-witness-assignment-overlap-experiment-1000-times-oncetime-hash.dat')
+        (datX, datY2) = witnessAssignmentOverlap(
+            random.randint(0, 1000), samples=[100] * 1000, loopHash=True)
+        exportPdf(
+            [datX, datY2], './experiment/witness/100-witness-assignment-overlap-experiment-1000-times-loop-hash.dat')
 
-    print 'Experiment: 100/10.000 witness (oncetime-hash)'
-    (datX, datY) = witnessAssign(random.randint(0, 1000), 200, loopHash=False)
-    plt.plot(datX, datY, 'go')
-    plt.cla()
-    plt.plot(datX, datY, 'go')
-    plt.savefig("./plot/200-witness-assignment-experiment-oncetime-hash.svg")
-    exportPdf(datX, datY, './experiment/witness/plot-data-200-points-oncetime-hash.dat')
-    plt.cla()
+    if(not isExistingFile('./experiment/witness/100-1000-witness-assignment-overlap-experiment-oncetime-hash.dat')) and (not isExistingFile('./experiment/witness/100-1000-witness-assignment-overlap-experiment-loop-hash.dat')):
+        print 'Experiment: assign 100 witness increase to 1000 witness'
+        dat = []
+        for c in range(10):
+            (datX, datY) = witnessAssignmentOverlap(random.randint(
+                0, 1000), samples=range(100, 1100, 100), loopHash=False)
+            if(c == 0):
+                dat.append(datX)
+            dat.append(datY)
+        averageY = []
+        for i in range(len(datY)):
+            averageY.append(float(dat[1][i] + dat[2][i] + dat[3][i]) / 3)
+        dat.append(averageY)
+        exportPdf(
+            dat, './experiment/witness/100-1000-witness-assignment-overlap-experiment-oncetime-hash.dat')
 
-    print 'Experiment: (100...2000)/10.000 witness (oncetime-hash)'
-    (datX, datY) = witnessAssignmentOverlap(random.randint(0, 1000), loopHash=False)
-    plt.plot(datX, datY)
-    plt.savefig("./plot/witness-assignment-overlap-experiment-oncetime-hash.svg")
-    exportPdf(datX, datY, './experiment/witness/witness-assignment-overlap-experiment-oncetime-hash.dat')
-    plt.cla()
+        dat = []
+        for c in range(10):
+            (datX, datY) = witnessAssignmentOverlap(random.randint(
+                0, 1000), samples=range(100, 1100, 100), loopHash=False)
+            if(c == 0):
+                dat.append(datX)
+            dat.append(datY)
+        averageY = []
+        for i in range(len(datY)):
+            averageY.append(float(dat[1][i] + dat[2][i] + dat[3][i]) / 3)
+        dat.append(averageY)
+        exportPdf(
+            dat, './experiment/witness/100-1000-witness-assignment-overlap-experiment-loop-hash.dat')
 
-    print 'Experiment: 60..80% colluding parties (oncetime-hash)'
-    plotX = []
-    plotY1 = []
-    plotY2 = []
-    plotY3 = []
-
-    for i in range(100):
-        plotX.append(i)
-        plotY1.append(witnessColluding(1, totalWintess=10000,
-                                    percent=0.6, neighbors=100, loopHash=False))
-        plotY2.append(witnessColluding(1, totalWintess=10000,
-                                    percent=0.7, neighbors=100, loopHash=False))
-        plotY3.append(witnessColluding(1, totalWintess=10000,
-                                    percent=0.8, neighbors=100, loopHash=False))
-    plt.plot(plotX, plotY1)
-    plt.plot(plotX, plotY2)
-    plt.plot(plotX, plotY3)
-
-    fHandle = open('./experiment/witness/colluding-parties-rate-oncetime-hash.dat', 'w')
-    fHandle.write('x y1 y2 y3\n')
-    for c in range(100):
-        fHandle.write(`plotX[c]` + ' ' + `plotY1[c]` + ' ' + `plotY2[c]` + ' ' + `plotY3[c]` + '\n')
-    fHandle.close()
-    plt.savefig("./plot/colluding-parties-rate-oncetime-hash.svg")
-    plt.cla()
-
-    print 'Experiment: 100/10.000 witness (loop-hash)'
-    (datX, datY) = witnessAssign(random.randint(0, 1000), 200, loopHash=True)
-    plt.plot(datX, datY, 'go')
-    plt.savefig("./plot/200-witness-assignment-experiment-loop-hash.svg")
-    exportPdf(datX, datY, './experiment/witness/plot-data-200-points-loop-hash.dat')
-    plt.cla()
-    
-    print 'Experiment: (100...2000)/10.000 witness (loop-hash)'
-    (datX, datY) = witnessAssignmentOverlap(random.randint(0, 1000), loopHash=True)
-    plt.plot(datX, datY)
-    plt.savefig("./plot/witness-assignment-overlap-experiment-loop-hash.svg")
-    exportPdf(datX, datY, './experiment/witness/witness-assignment-overlap-experiment-loop-hash.dat')
-    plt.cla()
-   
-    plotX = []
-    plotY1 = []
-    plotY2 = []
-    plotY3 = []
-
-    print 'Experiment: 60..80% colluding parties (loop-hash)'
-    for i in range(100):
-        plotX.append(i)
-        plotY1.append(witnessColluding(1, totalWintess=10000,
-                                    percent=0.6, neighbors=100, loopHash=True))
-        plotY2.append(witnessColluding(1, totalWintess=10000,
-                                    percent=0.7, neighbors=100, loopHash=True))
-        plotY3.append(witnessColluding(1, totalWintess=10000,
-                                    percent=0.8, neighbors=100, loopHash=True))
-    plt.plot(plotX, plotY1)
-    plt.plot(plotX, plotY2)
-    plt.plot(plotX, plotY3)
-
-    fHandle = open('./experiment/witness/colluding-parties-rate-loop-hash.dat', 'w')
-    fHandle.write('x y1 y2 y3\n')
-    for c in range(100):
-        fHandle.write(`plotX[c]` + ' ' + `plotY1[c]` + ' ' + `plotY2[c]` + ' ' + `plotY3[c]` + '\n')
-    fHandle.close()
-    plt.savefig("./plot/colluding-parties-rate-loop-hash.svg")
-    plt.cla()
 
 # Solutions experiment
 
@@ -616,17 +600,19 @@ def solutionsExperiment():
         exportData = jsonRead('./data/bruteforce-estimate-and-experiment.dat')
 
     # Bruterforce experiment
-    plt.title('[Brute-force] Probability of solution\'s images dependence to e')
-    label = ['Estimate', 'Experiment']
-    lines = []
-    for i in [1, 2]:
-        lines.append(None)
-        lines[i - 1], = plt.plot(exportData[0],
-                                 exportData[i], label=label[i - 1])
+    if(not isExistingFile('./plot/bruteforce-estimate-and-experiment.svg')):
+        plt.title(
+            '[Brute-force] Probability of solution\'s images dependence to e')
+        label = ['Estimate', 'Experiment']
+        lines = []
+        for i in [1, 2]:
+            lines.append(None)
+            lines[i - 1], = plt.plot(exportData[0],
+                                     exportData[i], label=label[i - 1])
 
-    plt.legend(bbox_to_anchor=(1, 1), handles=lines)
-    plt.savefig("./plot/bruteforce-estimate-and-experiment.svg")
-    plt.cla()
+        plt.legend(bbox_to_anchor=(1, 1), handles=lines)
+        plt.savefig("./plot/bruteforce-estimate-and-experiment.svg")
+        plt.cla()
 
     print 'Randomize experiment'
     if(not isExistingFile('./data/randomize-estimate-and-experiment.dat')):
@@ -641,17 +627,20 @@ def solutionsExperiment():
         exportData = jsonRead('./data/randomize-estimate-and-experiment.dat')
 
     # Randomize experiment
-    plt.title('[Randomize] Probability of solution\'s images dependence to e')
-    label = ['Estimate', 'Experiment']
-    lines = []
-    for i in [1, 2]:
-        lines.append(None)
-        lines[i - 1], = plt.plot(exportData[0],
-                                 exportData[i], label=label[i - 1])
+    if(not isExistingFile('./plot/randomize-estimate-and-experiment.svg')):
+        plt.title(
+            '[Randomize] Probability of solution\'s images dependence to e')
+        label = ['Estimate', 'Experiment']
+        lines = []
+        for i in [1, 2]:
+            lines.append(None)
+            lines[i - 1], = plt.plot(exportData[0],
+                                     exportData[i], label=label[i - 1])
 
-    plt.legend(bbox_to_anchor=(1, 1), handles=lines)
-    plt.savefig("./plot/randomize-estimate-and-experiment.svg")
-    plt.cla()
+        plt.legend(bbox_to_anchor=(1, 1), handles=lines)
+        plt.savefig("./plot/randomize-estimate-and-experiment.svg")
+        plt.cla()
+
 
 # Solutions experiment
 solutionsExperiment()
