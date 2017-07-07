@@ -502,6 +502,38 @@ def witnessAssign(baseBlock, times=100, totalWintess=10000, loopHash=False):
             datY.append(dat[c])
     return [datX, datY]
 
+# Solution distributed witness assign
+
+
+def witnessSolutionsCollision(baseBlock, solutions=100, chosenWitness=100, totalWintess=10000, loopHash=False):
+    x = ethereumBlockchain[baseBlock]['id']
+    v = keccak256Hex(x)
+    f = createFingerPrint(v)
+    dat = [0] * totalWintess
+    datX = []
+    datY = []
+    tmpClock = clock()
+    for c in range(solutions):
+        (x, tries) = randomizeFPoW(f, 64, 300, tmpClock)
+        tmpClock.reset()
+        v = keccak256Hex(x)
+        f = createFingerPrint(v)
+        for z in range(chosenWitness):
+            if(loopHash):
+                t = loopKeccak256Hex(v, z)
+            else:
+                t = keccak256Hex(v + pandding(z))
+            value = int('0x' + t[-8:64], 0)
+            dat[value % totalWintess] += 1
+    for c in range(30):
+        datX.append(c)
+        repeatSolution = 0
+        for i in range(totalWintess):
+            if(dat[i] == c):
+                repeatSolution += 1
+        datY.append(repeatSolution)
+    return [datX, datY]
+
 # Witness assignment overlap
 
 
@@ -541,13 +573,17 @@ def witnessAssignmentOverlap(baseBlock, samples=range(100, 1100, 100), totalWint
 
 def witnessExperiment():
     print 'Witness experiment'
-    
-    if(not isExistingFile('./experiment/witness/100-witness-assignment-overlap-experiment-oncetime-hash.dat')) and (not isExistingFile('./experiment/witness/100-witness-assignment-overlap-experiment-loop-hash.dat')):
+
+    if(not isExistingFile('./experiment/witness/200-witness-assignment-overlap-experiment-oncetime-hash.dat')) and (not isExistingFile('./experiment/witness/200-witness-assignment-overlap-experiment-loop-hash.dat')):
         print 'Experiment: 200 witness overlap'
-        (datX, datY) = witnessAssign(random.randint(0, 1000), times=200, loopHash=False)
-        exportPdf([datX, datY], './experiment/witness/200-witness-assignment-overlap-experiment-oncetime-hash.dat')
-        (datX, datY) = witnessAssign(random.randint(0, 1000), times=200, loopHash=True)
-        exportPdf([datX, datY], './experiment/witness/200-witness-assignment-overlap-experiment-loop-hash.dat')
+        (datX, datY) = witnessAssign(random.randint(
+            0, 1000), times=200, loopHash=False)
+        exportPdf(
+            [datX, datY], './experiment/witness/200-witness-assignment-overlap-experiment-oncetime-hash.dat')
+        (datX, datY) = witnessAssign(
+            random.randint(0, 1000), times=200, loopHash=True)
+        exportPdf(
+            [datX, datY], './experiment/witness/200-witness-assignment-overlap-experiment-loop-hash.dat')
 
     if(not isExistingFile('./experiment/witness/100-witness-assignment-overlap-experiment-1000-times-oncetime-hash.dat')) and (not isExistingFile('./experiment/witness/100-witness-assignment-overlap-experiment-1000-times-loop-hash.dat')):
         print 'Experiment: assign 100 witness 1000 times'
@@ -589,6 +625,48 @@ def witnessExperiment():
         dat.append(averageY)
         exportPdf(
             dat, './experiment/witness/100-1000-witness-assignment-overlap-experiment-loop-hash.dat')
+        
+    if(not isExistingFile('./experiment/witness/solutions-witness-assignment-overlap-experiment-oncetime-hash.dat')) and (not isExistingFile('./experiment/witness/solutions-witness-assignment-overlap-experiment-loop-hash.dat')):
+        print 'Experiment: solution 100-1000 assign to 100 witness'
+        dat = []
+        for c in range(100, 1100, 100):
+            bufferY = []
+            averageY = []
+            for i in range(10):
+                (datX, datY) = witnessSolutionsCollision(random.randint(0,1000), solutions=c, chosenWitness=100, totalWintess=10000, loopHash=False)
+                plt.plot(datX, datY)
+                bufferY.append(datY)
+            if(c == 100):
+                dat.append(datX)
+            for x in range(len(datX)):
+                sumVal = 0
+                for y in range(len(bufferY)):
+                    sumVal += bufferY[y][x]
+                averageY.append(float(sumVal)/len(bufferY))
+       
+            dat.append(averageY)
+        exportPdf(dat, './experiment/witness/solutions-witness-assignment-overlap-experiment-oncetime-hash.dat')
+
+        dat = []
+        for c in range(100, 1100, 100):
+            bufferY = []
+            averageY = []
+            for i in range(10):
+                (datX, datY) = witnessSolutionsCollision(random.randint(0,1000), solutions=c, chosenWitness=100, totalWintess=10000, loopHash=True)
+                plt.plot(datX, datY)
+                bufferY.append(datY)
+            if(c == 100):
+                dat.append(datX)
+            for x in range(len(datX)):
+                sumVal = 0
+                for y in range(len(bufferY)):
+                    sumVal += bufferY[y][x]
+                averageY.append(float(sumVal)/len(bufferY))
+       
+            dat.append(averageY)
+        exportPdf(dat, './experiment/witness/solutions-witness-assignment-overlap-experiment-loop-hash.dat')
+        
+        
 
 
 # Solutions experiment
