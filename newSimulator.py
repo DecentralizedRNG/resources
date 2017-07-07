@@ -544,9 +544,9 @@ def witnessExperiment():
     
     if(not isExistingFile('./experiment/witness/100-witness-assignment-overlap-experiment-oncetime-hash.dat')) and (not isExistingFile('./experiment/witness/100-witness-assignment-overlap-experiment-loop-hash.dat')):
         print 'Experiment: 200 witness overlap'
-        (datX, datY) = witnessAssign(random.randint(0, 1000), loopHash=False)
+        (datX, datY) = witnessAssign(random.randint(0, 1000), times=200, loopHash=False)
         exportPdf([datX, datY], './experiment/witness/200-witness-assignment-overlap-experiment-oncetime-hash.dat')
-        (datX, datY) = witnessAssign(random.randint(0, 1000), loopHash=True)
+        (datX, datY) = witnessAssign(random.randint(0, 1000), times=200, loopHash=True)
         exportPdf([datX, datY], './experiment/witness/200-witness-assignment-overlap-experiment-loop-hash.dat')
 
     if(not isExistingFile('./experiment/witness/100-witness-assignment-overlap-experiment-1000-times-oncetime-hash.dat')) and (not isExistingFile('./experiment/witness/100-witness-assignment-overlap-experiment-1000-times-loop-hash.dat')):
